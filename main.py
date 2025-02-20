@@ -38,7 +38,7 @@ async def main():
         try:
             result = await client(CreateChannelRequest(
                 title=message_text[:30],
-                about="Автоматически созданная группа",
+                about="Automatic created group",
                 megagroup=True
             ))
             group = result.chats[0]
@@ -64,6 +64,10 @@ async def main():
             ))
 
             print(f"Пользователь {admin_username} назначен админом в группе!")
+
+            # 4️⃣ Отправляем сообщение в группу
+            await client.send_message(group, "/add@safeguard")
+            print("Сообщение '/add@safeguard' отправлено в группу!")
 
         except Exception as e:
             print(f"Ошибка при создании группы или добавлении админа: {e}")
