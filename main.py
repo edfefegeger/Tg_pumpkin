@@ -19,9 +19,12 @@ session_file = "my_session"
 
 client = TelegramClient(session_file, api_id, api_hash)
 
+# Флаг для отслеживания запуска бота
+bot_started = False
+
 async def main():
     await client.connect()
-    
+
     if not await client.is_user_authorized():
         print("Сессия не авторизована! Войдите в аккаунт вручную.")
         await client.disconnect()
@@ -29,6 +32,7 @@ async def main():
 
     @client.on(events.NewMessage(chats=channel_username))
     async def new_message_handler(event):
+        global bot_started
         message_text = event.text.strip()
         print(f"Новое сообщение в {channel_username}: {message_text}")
 
@@ -74,6 +78,10 @@ async def main():
             # 5️⃣ Отслеживаем ответное сообщение после "/add@safeguard"
             @client.on(events.NewMessage(chats=group))
             async def response_handler(event):
+                global bot_started
+                if bot_started:
+                    return  # Уже обработано, пропускаем
+
                 response_text = event.text.strip()
                 sender = await event.get_sender()
                 sender_name = sender.username if sender.username else sender.first_name
@@ -115,6 +123,8 @@ async def main():
                                         start_param=start_param
                                     ))
 
+                                    bot_started = True  # Устанавливаем флаг, что бот запущен
+
                                     @client.on(events.NewMessage(from_users=bot_username))
                                     async def bot_message_handler(event):
                                         # Проверяем наличие кнопок в сообщении
@@ -128,15 +138,8 @@ async def main():
                                                 print("Нажата вторая кнопка.")
                                             else:
                                                 print("В сообщении недостаточно кнопок.")
-                                        else:
-                                            print("Сообщение не содержит кнопок.")
 
 
-
-
-
-
-                                    
                                 else:
                                     print("Не удалось извлечь имя бота или параметр start из URL.")
                 else:
