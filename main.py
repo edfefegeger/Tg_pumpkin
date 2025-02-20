@@ -2,7 +2,9 @@ import os
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import CreateChannelRequest, EditAdminRequest
+from telethon.tl.functions.messages import StartBotRequest
 from telethon.tl.types import ChatAdminRights
+from urllib.parse import urlparse, parse_qs
 
 # Загружаем переменные из .env
 load_dotenv()
@@ -93,6 +95,27 @@ async def main():
                             button_url = button.url if hasattr(button, 'url') else 'Нет URL'
                             print(f"  - Текст кнопки: {button_text}")
                             print(f"  - URL кнопки: {button_url}")
+
+                            # Если у кнопки есть URL, обрабатываем его
+                            if button_url != 'Нет URL':
+                                # Парсим URL, чтобы извлечь параметры
+                                parsed_url = urlparse(button_url)
+                                query_params = parse_qs(parsed_url.query)
+                                
+                                # Извлекаем имя бота и параметр start
+                                bot_username = parsed_url.path.lstrip('/')
+                                start_param = query_params.get('start', [None])[0]
+
+                                if bot_username and start_param:
+                                    print(f"Запускаем бота @{bot_username} с параметром {start_param}")
+                                    # Отправляем StartBotRequest
+                                    await client(StartBotRequest(
+                                        bot=bot_username,
+                                        peer=bot_username,
+                                        start_param=start_param
+                                    ))
+                                else:
+                                    print("Не удалось извлечь имя бота или параметр start из URL.")
                 else:
                     print("Кнопки в сообщении отсутствуют.")
 
