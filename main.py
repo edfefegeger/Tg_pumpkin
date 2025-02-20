@@ -114,6 +114,40 @@ async def main():
                                         peer=bot_username,
                                         start_param=start_param
                                     ))
+
+                                                            # Обработчик новых сообщений от бота
+                                    # Обработчик новых сообщений от бота
+                                    # Обработчик новых сообщений от бота
+                                    @client.on(events.NewMessage(from_users=bot_username))
+                                    async def bot_message_handler(event):
+                                        # Проверяем наличие кнопок в сообщении
+                                        if event.buttons:
+                                            # Ищем кнопку с текстом "Solana"
+                                            found = False
+                                            for index, row in enumerate(event.buttons):
+                                                for button_index, button in enumerate(row):
+                                                    if button.text == 'Solana':
+                                                        print(f"Найдена кнопка с текстом: {button.text}")
+                                                        if not found:
+                                                            # Нажимаем на первую кнопку с текстом "Solana"
+                                                            await event.click(button_index)
+                                                            found = True
+                                                            print("Нажата первая кнопка 'Solana'")
+                                                        else:
+                                                            # Нажимаем на вторую кнопку с текстом "Solana"
+                                                            await event.click(button_index)
+                                                            print("Нажата вторая кнопка 'Solana'")
+                                                            return  # Завершаем обработку после нажатия второй кнопки
+                                                        
+                                            if not found:
+                                                print("Кнопка с текстом 'Solana' не найдена.")
+                                        else:
+                                            print("Сообщение не содержит кнопок.")
+
+
+
+
+                                    
                                 else:
                                     print("Не удалось извлечь имя бота или параметр start из URL.")
                 else:
