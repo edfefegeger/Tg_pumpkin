@@ -1,8 +1,7 @@
 import os
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
-from telethon.tl.functions.channels import CreateChannelRequest
-from telethon.tl.functions.messages import EditChatAdminRequest
+from telethon.tl.functions.channels import CreateChannelRequest, EditAdminRequest
 from telethon.tl.types import ChatAdminRights
 
 # Загружаем переменные из .env
@@ -42,23 +41,26 @@ async def main():
                 about="Автоматически созданная группа",
                 megagroup=True
             ))
-            group_id = result.chats[0].id
+            group = result.chats[0]
+            group_id = group.id
             print(f"Группа '{message_text[:30]}' создана! ID: {group_id}")
 
             # 2️⃣ Ищем пользователя @safeguard
             admin = await client.get_entity(admin_username)
 
             # 3️⃣ Назначаем @safeguard админом
-            await client(EditChatAdminRequest(
-                chat_id=group_id,
+            rights = ChatAdminRights(
+                change_info=True, post_messages=True, edit_messages=True,
+                delete_messages=True, ban_users=True, invite_users=True,
+                pin_messages=True, add_admins=True, anonymous=False,
+                manage_call=True
+            )
+
+            await client(EditAdminRequest(
+                channel=group,  # Передаём объект группы
                 user_id=admin.id,
-                is_admin=True,
-                admin_rights=ChatAdminRights(
-                    change_info=True, post_messages=True, edit_messages=True,
-                    delete_messages=True, ban_users=True, invite_users=True,
-                    pin_messages=True, add_admins=True, anonymous=False,
-                    manage_call=True
-                )
+                admin_rights=rights,
+                rank="Admin"
             ))
 
             print(f"Пользователь {admin_username} назначен админом в группе!")
