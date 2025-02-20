@@ -1,4 +1,5 @@
 import os
+import re
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import CreateChannelRequest, EditAdminRequest
@@ -22,6 +23,10 @@ client = TelegramClient(session_file, api_id, api_hash)
 # Флаг для отслеживания запуска бота
 bot_started = False
 
+# Регулярное выражение для поиска токен-адреса
+token_pattern = re.compile(r"([A-Za-z0-9]{34,})")
+
+
 async def main():
     await client.connect()
 
@@ -39,6 +44,14 @@ async def main():
         if not message_text:
             print("Сообщение пустое, пропускаем...")
             return
+
+        # Попытка извлечь токен из сообщения
+        token_match = token_pattern.search(message_text)
+        if token_match:
+            token_address = token_match.group(1)
+            print(f"Найден токен: {token_address}")
+        else:
+            print("Токен не найден.")
 
         # 1️⃣ Создаем группу
         try:
@@ -138,7 +151,8 @@ async def main():
                                                 print("Нажата вторая кнопка.")
                                             else:
                                                 print("В сообщении недостаточно кнопок.")
-
+                                        else:
+                                            print("Сообщение не содержит кнопок.")
 
                                 else:
                                     print("Не удалось извлечь имя бота или параметр start из URL.")
