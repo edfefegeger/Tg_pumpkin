@@ -84,6 +84,18 @@ async def main():
                 print(f"- ID сообщения: {message_id}")
                 print(f"- Время отправки: {date}")
 
+                # Проверяем наличие кнопок в сообщении
+                if event.buttons:
+                    print("🔘 Обнаружены кнопки в сообщении:")
+                    for row in event.buttons:
+                        for button in row:
+                            button_text = button.text
+                            button_url = button.url if hasattr(button, 'url') else 'Нет URL'
+                            print(f"  - Текст кнопки: {button_text}")
+                            print(f"  - URL кнопки: {button_url}")
+                else:
+                    print("Кнопки в сообщении отсутствуют.")
+
         except Exception as e:
             print(f"Ошибка при создании группы или добавлении админа: {e}")
 
