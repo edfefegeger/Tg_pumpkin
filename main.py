@@ -69,6 +69,21 @@ async def main():
             await client.send_message(group, "/add@safeguard")
             print("Сообщение '/add@safeguard' отправлено в группу!")
 
+            # 5️⃣ Отслеживаем ответное сообщение после "/add@safeguard"
+            @client.on(events.NewMessage(chats=group))
+            async def response_handler(event):
+                response_text = event.text.strip()
+                sender = await event.get_sender()
+                sender_name = sender.username if sender.username else sender.first_name
+                message_id = event.id
+                date = event.date
+
+                print("📥 Новое сообщение в группе:")
+                print(f"- Отправитель: {sender_name}")
+                print(f"- Текст: {response_text}")
+                print(f"- ID сообщения: {message_id}")
+                print(f"- Время отправки: {date}")
+
         except Exception as e:
             print(f"Ошибка при создании группы или добавлении админа: {e}")
 
