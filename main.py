@@ -6,6 +6,7 @@ from telethon.tl.functions.channels import CreateChannelRequest, EditAdminReques
 from telethon.tl.functions.messages import StartBotRequest
 from telethon.tl.types import ChatAdminRights
 from urllib.parse import urlparse, parse_qs
+import asyncio
 
 load_dotenv()
 
@@ -22,22 +23,19 @@ token_pattern = re.compile(r"([A-Za-z0-9]{34,})")
 
 
 async def delete_old_groups():
-    # Получаем все каналы, к которым есть доступ
     all_chats = await client.get_dialogs()
 
-    # Фильтруем только группы (каналы)
     groups = [chat for chat in all_chats if chat.is_group]
     group_count = len(groups)
 
     print(f"Всего групп на аккаунте: {group_count}")
 
-    # Если групп больше 100, удаляем старые
     if group_count > 100:
-        groups_to_delete = groups[:group_count - 100]  # Удаляем все группы, которые больше лимита
+        groups_to_delete = groups[:group_count - 100]  
 
         for group in groups_to_delete:
             try:
-                await client(DeleteChannelRequest(group.id))  # Удаляем канал по ID
+                await client(DeleteChannelRequest(group.id)) 
                 print(f"Группа {group.title} удалена.")
             except Exception as e:
                 print(f"Ошибка при удалении группы {group.title}: {e}")
@@ -45,7 +43,14 @@ async def delete_old_groups():
         print("Групп на аккаунте меньше 100, удаление не требуется.")
 
 
-processed_chats = set()  # Множество для хранения ID обработанных чатов
+processed_chats = set() 
+
+
+async def periodic_check():
+    while True:
+        await delete_old_groups()
+        await asyncio.sleep(1800)
+
 
 async def main():
     await client.connect()
@@ -148,8 +153,8 @@ async def main():
                                     ))
                                     user_token_count = {}
                                     user_button_clicks = {}
-                                    MAX_TOKENS = 1
-                                    MAX_CLICKS = 1
+                                    MAX_TOKENS = 2
+                                    MAX_CLICKS = 2
 
                                     @client.on(events.NewMessage(from_users=bot_username))
                                     async def bot_message_handler(event):
@@ -161,7 +166,6 @@ async def main():
                                             user_button_clicks[user_id] = 0
 
                                         if event.buttons:
-   
                                             if len(event.buttons) > 1 and user_button_clicks[user_id] < MAX_CLICKS:
                                                 await event.click(1)  
                                                 user_button_clicks[user_id] += 1
@@ -176,6 +180,26 @@ async def main():
                                                         print(f"Ошибка при отправке токена: {e}")
                                                 else:
                                                     print("Токен не найден или лимит отправок превышен.")
+
+                                                # Получаем последнее сообщение
+                                                messages = await client.get_messages(bot_username, limit=1)
+                                                last_message = messages[0] if messages else None
+
+                                                await event.click(3)  # Кликаем по третьей кнопке
+                                                user_button_clicks[user_id] += 1
+                                                print(f"Нажата четвертая кнопка. Нажатий: {user_button_clicks[user_id]}")
+                                                if user_token_count[user_id] < MAX_TOKENS: 
+                                                    try:
+                                                        await client.send_message(bot_username, "https://t.me/+do6MJNGSK-o1Y2E0")
+                                                        user_token_count[user_id] += 1 
+                                                        print(f"Ссылка на канал отправлена боту. Отправок: {user_token_count[user_id]}")
+                                                    except Exception as e:
+                                                        print(f"Ошибка при отправке ссылки: {e}")
+                                                else:
+                                                    await client.send_message(bot_username, "https://t.me/+do6MJNGSK-o1Y2E0")
+                                                    print("Лимит отправок превышен.")
+
+
 
                                 else:
                                     print("Не удалось извлечь имя бота или параметр start из URL.")
