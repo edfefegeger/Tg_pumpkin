@@ -60,17 +60,14 @@ async def main():
         await client.disconnect()
         return
 
-    # Проверяем и удаляем старые группы перед основной логикой
     await delete_old_groups()
 
     @client.on(events.NewMessage(chats=channel_username))
     async def new_message_handler(event):
         global bot_started
         message_text = event.text.strip()
-        chat_id = event.chat.id  # Получаем ID чата
+        chat_id = event.chat.id  
         print(f"Новое сообщение в {channel_username}: {message_text}")
-
-        # Если чат уже обработан, пропускаем его
         if chat_id in processed_chats:
             print(f"Чат {chat_id} уже обработан, пропускаем.")
             return
