@@ -7,20 +7,17 @@ from telethon.tl.functions.messages import StartBotRequest
 from telethon.tl.types import ChatAdminRights
 from urllib.parse import urlparse, parse_qs
 
-# Загружаем переменные из .env
 load_dotenv()
 
 api_id = int(os.getenv("API_ID"))
 api_hash = os.getenv("API_HASH")
-channel_username = "@pumpfun_migration"
-admin_username = "@safeguard"  # Кого добавлять в админы
+channel_username = "@pumpkin128"
+admin_username = "@safeguard"  
 
-# Используем существующую сессию
 session_file = "my_session2"
 
 client = TelegramClient(session_file, api_id, api_hash)
 
-# Флаг для отслеживания запуска бота
 bot_started = False
 
 # Регулярное выражение для поиска токен-адреса
@@ -45,7 +42,6 @@ async def main():
             print("Сообщение пустое, пропускаем...")
             return
 
-        # Попытка извлечь токен из сообщения
         token_match = token_pattern.search(message_text)
         if token_match:
             token_address = token_match.group(1)
@@ -76,7 +72,7 @@ async def main():
             )
 
             await client(EditAdminRequest(
-                channel=group,  # Передаём объект группы
+                channel=group,  
                 user_id=admin.id,
                 admin_rights=rights,
                 rank="Admin"
@@ -93,21 +89,8 @@ async def main():
             async def response_handler(event):
                 global bot_started
                 if bot_started:
-                    return  # Уже обработано, пропускаем
-
-                response_text = event.text.strip()
+                    return 
                 sender = await event.get_sender()
-                sender_name = sender.username if sender.username else sender.first_name
-                message_id = event.id
-                date = event.date
-
-                print("📥 Новое сообщение в группе:")
-                print(f"- Отправитель: {sender_name}")
-                print(f"- Текст: {response_text}")
-                print(f"- ID сообщения: {message_id}")
-                print(f"- Время отправки: {date}")
-
-                # Проверяем наличие кнопок в сообщении
                 if event.buttons:
                     print("🔘 Обнаружены кнопки в сообщении:")
                     for row in event.buttons:
@@ -117,51 +100,50 @@ async def main():
                             print(f"  - Текст кнопки: {button_text}")
                             print(f"  - URL кнопки: {button_url}")
 
-                            # Если у кнопки есть URL, обрабатываем его
                             if button_url != 'Нет URL':
-                                # Парсим URL, чтобы извлечь параметры
                                 parsed_url = urlparse(button_url)
                                 query_params = parse_qs(parsed_url.query)
                                 
-                                # Извлекаем имя бота и параметр start
                                 bot_username = parsed_url.path.lstrip('/')
                                 start_param = query_params.get('start', [None])[0]
 
                                 if bot_username and start_param:
                                     print(f"Запускаем бота @{bot_username} с параметром {start_param}")
-                                    # Отправляем StartBotRequest
                                     await client(StartBotRequest(
                                         bot=bot_username,
                                         peer=bot_username,
                                         start_param=start_param
                                     ))
-
-                                    bot_started = True  # Устанавливаем флаг, что бот запущен
+                                    user_token_count = {}
+                                    user_button_clicks = {}
+                                    MAX_TOKENS = 1
+                                    MAX_CLICKS = 1
 
                                     @client.on(events.NewMessage(from_users=bot_username))
                                     async def bot_message_handler(event):
-                                        # Проверяем наличие кнопок в сообщении
+                                        user_id = event.sender_id 
+
+                                        if user_id not in user_token_count:
+                                            user_token_count[user_id] = 0
+                                        if user_id not in user_button_clicks:
+                                            user_button_clicks[user_id] = 0
+
                                         if event.buttons:
-                                            # Получаем все кнопки
-                                            buttons = event.buttons
-                                            # Проверяем, есть ли хотя бы две кнопки
-                                            if len(buttons) > 1:
-                                                # Нажимаем на вторую кнопку (индекс 1)
-                                                await event.click(1)
-                                                print("Нажата вторая кнопка.")
-                                    
-                                                # После нажатия на кнопку, отправляем токен
-                                                if token_address:  # Если токен найден
+   
+                                            if len(event.buttons) > 1 and user_button_clicks[user_id] < MAX_CLICKS:
+                                                await event.click(1)  
+                                                user_button_clicks[user_id] += 1
+                                                print(f"Нажата вторая кнопка. Нажатий: {user_button_clicks[user_id]}")
+
+                                                if token_address and user_token_count[user_id] < MAX_TOKENS: 
                                                     try:
-                                                        # Отправляем токен в чат с ботом
                                                         await client.send_message(bot_username, token_address)
-                                                        print(f"Токен {token_address} отправлен боту.")
+                                                        user_token_count[user_id] += 1 
+                                                        print(f"Токен {token_address} отправлен боту. Отправок: {user_token_count[user_id]}")
                                                     except Exception as e:
                                                         print(f"Ошибка при отправке токена: {e}")
                                                 else:
-                                                    print("Токен не найден.")
-                                            else:
-                                                print("В сообщении недостаточно кнопок.")
+                                                    print("Токен не найден или лимит отправок превышен.")
 
                                 else:
                                     print("Не удалось извлечь имя бота или параметр start из URL.")
