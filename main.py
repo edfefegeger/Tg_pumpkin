@@ -2,7 +2,7 @@ import os
 import re
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
-from telethon.tl.functions.channels import CreateChannelRequest, EditAdminRequest
+from telethon.tl.functions.channels import CreateChannelRequest, EditAdminRequest, DeleteChannelRequest
 from telethon.tl.functions.messages import StartBotRequest
 from telethon.tl.types import ChatAdminRights
 from urllib.parse import urlparse, parse_qs
@@ -11,18 +11,41 @@ load_dotenv()
 
 api_id = int(os.getenv("API_ID"))
 api_hash = os.getenv("API_HASH")
-channel_username = "@pumpkin128"
+channel_username = "@pumpfun_migration"
 admin_username = "@safeguard"  
 
-session_file = "my_session2"
+session_file = "my_session"
 
 client = TelegramClient(session_file, api_id, api_hash)
-
 bot_started = False
-
-# Регулярное выражение для поиска токен-адреса
 token_pattern = re.compile(r"([A-Za-z0-9]{34,})")
 
+
+async def delete_old_groups():
+    # Получаем все каналы, к которым есть доступ
+    all_chats = await client.get_dialogs()
+
+    # Фильтруем только группы (каналы)
+    groups = [chat for chat in all_chats if chat.is_group]
+    group_count = len(groups)
+
+    print(f"Всего групп на аккаунте: {group_count}")
+
+    # Если групп больше 100, удаляем старые
+    if group_count > 100:
+        groups_to_delete = groups[:group_count - 100]  # Удаляем все группы, которые больше лимита
+
+        for group in groups_to_delete:
+            try:
+                await client(DeleteChannelRequest(group.id))  # Удаляем канал по ID
+                print(f"Группа {group.title} удалена.")
+            except Exception as e:
+                print(f"Ошибка при удалении группы {group.title}: {e}")
+    else:
+        print("Групп на аккаунте меньше 100, удаление не требуется.")
+
+
+processed_chats = set()  # Множество для хранения ID обработанных чатов
 
 async def main():
     await client.connect()
@@ -32,11 +55,20 @@ async def main():
         await client.disconnect()
         return
 
+    # Проверяем и удаляем старые группы перед основной логикой
+    await delete_old_groups()
+
     @client.on(events.NewMessage(chats=channel_username))
     async def new_message_handler(event):
         global bot_started
         message_text = event.text.strip()
+        chat_id = event.chat.id  # Получаем ID чата
         print(f"Новое сообщение в {channel_username}: {message_text}")
+
+        # Если чат уже обработан, пропускаем его
+        if chat_id in processed_chats:
+            print(f"Чат {chat_id} уже обработан, пропускаем.")
+            return
 
         if not message_text:
             print("Сообщение пустое, пропускаем...")
@@ -147,8 +179,8 @@ async def main():
 
                                 else:
                                     print("Не удалось извлечь имя бота или параметр start из URL.")
-                else:
-                    print("Кнопки в сообщении отсутствуют.")
+                
+
 
         except Exception as e:
             print(f"Ошибка при создании группы или добавлении админа: {e}")
@@ -159,3 +191,6 @@ async def main():
 # Запуск
 with client:
     client.loop.run_until_complete(main())
+
+
+
