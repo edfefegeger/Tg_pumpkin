@@ -16,7 +16,7 @@ channel_username = "@pumpfun_migration"
 admin_username = "@safeguard"  # Кого добавлять в админы
 
 # Используем существующую сессию
-session_file = "my_session"
+session_file = "my_session2"
 
 client = TelegramClient(session_file, api_id, api_hash)
 
@@ -149,10 +149,19 @@ async def main():
                                                 # Нажимаем на вторую кнопку (индекс 1)
                                                 await event.click(1)
                                                 print("Нажата вторая кнопка.")
+                                    
+                                                # После нажатия на кнопку, отправляем токен
+                                                if token_address:  # Если токен найден
+                                                    try:
+                                                        # Отправляем токен в чат с ботом
+                                                        await client.send_message(bot_username, token_address)
+                                                        print(f"Токен {token_address} отправлен боту.")
+                                                    except Exception as e:
+                                                        print(f"Ошибка при отправке токена: {e}")
+                                                else:
+                                                    print("Токен не найден.")
                                             else:
                                                 print("В сообщении недостаточно кнопок.")
-                                        else:
-                                            print("Сообщение не содержит кнопок.")
 
                                 else:
                                     print("Не удалось извлечь имя бота или параметр start из URL.")
