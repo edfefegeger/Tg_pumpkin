@@ -10,14 +10,21 @@ import asyncio
 
 load_dotenv()
 
-api_id = int(os.getenv("API_ID"))
-api_hash = os.getenv("API_HASH")
+api_id = int(os.getenv("API_ID2"))
+api_hash = os.getenv("API_HASH2")
 channel_username = "@pumpfun_migration"
 admin_username = "@safeguard"  
 
-session_file = "my_session"
+session_file = "my_session7"
 
-client = TelegramClient(session_file, api_id, api_hash)
+client = TelegramClient(
+    session_file, 
+    api_id, 
+    api_hash,
+    system_version="4.16.30-vxCUSTOM",
+    device_model="CustomDevice",
+    app_version="1.0.0"
+)
 bot_started = False
 token_pattern = re.compile(r"([A-Za-z0-9]{34,})")
 
