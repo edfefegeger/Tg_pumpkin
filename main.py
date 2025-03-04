@@ -15,7 +15,7 @@ api_hash = os.getenv("API_HASH2")
 channel_username = "@pumpfun_migration"
 admin_username = "@safeguard"  
 
-session_file = "my_session7"
+session_file = "79252106970"
 
 client = TelegramClient(
     session_file, 
@@ -27,6 +27,30 @@ client = TelegramClient(
 )
 bot_started = False
 token_pattern = re.compile(r"([A-Za-z0-9]{34,})")
+
+from telethon.errors import UserNotParticipantError
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.users import GetFullUserRequest
+
+async def ensure_membership():
+    try:
+        entity = await client.get_entity(channel_username)
+        me = await client.get_me()
+
+        # Проверяем, состоит ли пользователь в канале
+        try:
+            user_info = await client(GetFullUserRequest(me.id))
+            if any(chat.id == entity.id for chat in user_info.chats):
+                print(f"✅ Аккаунт уже состоит в {channel_username}.")
+                return
+        except UserNotParticipantError:
+            print(f"⚠️ Аккаунт НЕ состоит в {channel_username}, пробуем вступить...")
+
+        await client(JoinChannelRequest(channel_username))
+        print(f"🎉 Успешно вступили в {channel_username}!")
+    
+    except Exception as e:
+        print(f"❌ Ошибка при проверке или вступлении в канал: {e}")
 
 
 async def delete_old_groups():
@@ -66,8 +90,9 @@ async def main():
         print("Сессия не авторизована! Войдите в аккаунт вручную.")
         await client.disconnect()
         return
-
+    await ensure_membership() 
     await delete_old_groups()
+    
 
     @client.on(events.NewMessage(chats=channel_username))
     async def new_message_handler(event):
@@ -131,6 +156,7 @@ async def main():
                 global bot_started
                 if bot_started:
                     return 
+
                 sender = await event.get_sender()
                 if event.buttons:
                     print("🔘 Обнаружены кнопки в сообщении:")
@@ -144,7 +170,7 @@ async def main():
                             if button_url != 'Нет URL':
                                 parsed_url = urlparse(button_url)
                                 query_params = parse_qs(parsed_url.query)
-                                
+
                                 bot_username = parsed_url.path.lstrip('/')
                                 start_param = query_params.get('start', [None])[0]
 
@@ -155,6 +181,7 @@ async def main():
                                         peer=bot_username,
                                         start_param=start_param
                                     ))
+
                                     user_token_count = {}
                                     user_button_clicks = {}
                                     MAX_TOKENS = 2
@@ -162,51 +189,56 @@ async def main():
 
                                     @client.on(events.NewMessage(from_users=bot_username))
                                     async def bot_message_handler(event):
-                                        user_id = event.sender_id 
+                                        user_id = event.sender_id
 
                                         if user_id not in user_token_count:
                                             user_token_count[user_id] = 0
                                         if user_id not in user_button_clicks:
                                             user_button_clicks[user_id] = 0
 
-                                        if event.buttons:
-                                            if len(event.buttons) > 1 and user_button_clicks[user_id] < MAX_CLICKS:
-                                                await event.click(1)  
-                                                user_button_clicks[user_id] += 1
-                                                print(f"Нажата вторая кнопка. Нажатий: {user_button_clicks[user_id]}")
+                                        for i in range(2):  # Выполняем процесс дважды
+                                            if event.buttons:
+                                                if len(event.buttons) > 1 and user_button_clicks[user_id] < MAX_CLICKS:
+                                                    await event.click(1)  
+                                                    user_button_clicks[user_id] += 1
+                                                    print(f"Нажата вторая кнопка. Нажатий: {user_button_clicks[user_id]}")
 
-                                                if token_address and user_token_count[user_id] < MAX_TOKENS: 
-                                                    try:
-                                                        await client.send_message(bot_username, token_address)
-                                                        user_token_count[user_id] += 1 
-                                                        print(f"Токен {token_address} отправлен боту. Отправок: {user_token_count[user_id]}")
-                                                    except Exception as e:
-                                                        print(f"Ошибка при отправке токена: {e}")
-                                                else:
-                                                    print("Токен не найден или лимит отправок превышен.")
+                                                    if token_address and user_token_count[user_id] < MAX_TOKENS: 
+                                                        try:
+                                                            await client.send_message(bot_username, token_address)
+                                                            user_token_count[user_id] += 1 
+                                                            print(f"Токен {token_address} отправлен боту. Отправок: {user_token_count[user_id]}")
+                                                        except Exception as e:
+                                                            print(f"Ошибка при отправке токена: {e}")
+                                                    else:
+                                                        print("Токен не найден или лимит отправок превышен.")
 
-                                                # Получаем последнее сообщение
-                                                messages = await client.get_messages(bot_username, limit=1)
-                                                last_message = messages[0] if messages else None
+                                                    await asyncio.sleep(2)  # Даем боту время обработать
 
-                                                await event.click(3)  # Кликаем по третьей кнопке
-                                                user_button_clicks[user_id] += 1
-                                                print(f"Нажата четвертая кнопка. Нажатий: {user_button_clicks[user_id]}")
-                                                if user_token_count[user_id] < MAX_TOKENS: 
-                                                    try:
+                                                    # Получаем последнее сообщение
+                                                    messages = await client.get_messages(bot_username, limit=1)
+                                                    last_message = messages[0] if messages else None
+
+                                                    await event.click(3)  # Кликаем по четвертой кнопке
+                                                    user_button_clicks[user_id] += 1
+                                                    print(f"Нажата четвертая кнопка. Нажатий: {user_button_clicks[user_id]}")
+
+                                                    if user_token_count[user_id] < MAX_TOKENS: 
+                                                        try:
+                                                            await client.send_message(bot_username, "https://t.me/+do6MJNGSK-o1Y2E0")
+                                                            user_token_count[user_id] += 1 
+                                                            print(f"Ссылка на канал отправлена боту. Отправок: {user_token_count[user_id]}")
+                                                        except Exception as e:
+                                                            print(f"Ошибка при отправке ссылки: {e}")
+                                                    else:
                                                         await client.send_message(bot_username, "https://t.me/+do6MJNGSK-o1Y2E0")
-                                                        user_token_count[user_id] += 1 
-                                                        print(f"Ссылка на канал отправлена боту. Отправок: {user_token_count[user_id]}")
-                                                    except Exception as e:
-                                                        print(f"Ошибка при отправке ссылки: {e}")
-                                                else:
-                                                    await client.send_message(bot_username, "https://t.me/+do6MJNGSK-o1Y2E0")
-                                                    print("Лимит отправок превышен.")
+                                                        print("Лимит отправок превышен.")
 
-
+                                                    await asyncio.sleep(2)  # Пауза перед повторением
 
                                 else:
                                     print("Не удалось извлечь имя бота или параметр start из URL.")
+
                 
 
 
