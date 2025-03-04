@@ -7,7 +7,9 @@ from telethon.tl.functions.messages import StartBotRequest
 from telethon.tl.types import ChatAdminRights
 from urllib.parse import urlparse, parse_qs
 import asyncio
-
+from telethon.errors import UserNotParticipantError
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.users import GetFullUserRequest
 load_dotenv()
 
 api_id = int(os.getenv("API_ID2"))
@@ -15,22 +17,13 @@ api_hash = os.getenv("API_HASH2")
 channel_username = "@pumpfun_migration"
 admin_username = "@safeguard"  
 
-session_file = "79252106970"
+session_files = ["79252106970", "79252106943", "79251830936", "79251217174"]
+current_session_index = 0
 
-client = TelegramClient(
-    session_file, 
-    api_id, 
-    api_hash,
-    system_version="4.16.30-vxCUSTOM",
-    device_model="CustomDevice",
-    app_version="1.0.0"
-)
+client = None
 bot_started = False
 token_pattern = re.compile(r"([A-Za-z0-9]{34,})")
 
-from telethon.errors import UserNotParticipantError
-from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.functions.users import GetFullUserRequest
 
 async def ensure_membership():
     try:
@@ -77,13 +70,39 @@ async def delete_old_groups():
 processed_chats = set() 
 
 
-async def periodic_check():
+async def periodic_tasks():
+    """ Фоновая задача: удаление групп и другие проверки """
     while True:
         await delete_old_groups()
-        await asyncio.sleep(1800)
+        await asyncio.sleep(1800)  # Проверка каждые 30 минут
+
+async def rotate_sessions():
+    """ Меняем сессию каждые 4 часа и перезапускаем процесс """
+    global current_session_index, client
+    while True:
+        session_file = session_files[current_session_index]
+        print(f"🔄 Переключаемся на сессию: {session_file}")
+        
+        if client:
+            await client.disconnect()
+        
+        client = TelegramClient(session_file, api_id, api_hash,
+                                system_version="4.16.30-vxCUSTOM",
+                                device_model="CustomDevice",
+                                app_version="1.0.0")
+
+        await client.start()
+        print(f"✅ Клиент {session_file} подключен!")
+
+        await ensure_membership()
+        asyncio.create_task(periodic_tasks())
+
+        await asyncio.sleep(4 * 3600)
+        current_session_index = (current_session_index + 1) % len(session_files)
 
 
 async def main():
+    await rotate_sessions()
     await client.connect()
 
     if not await client.is_user_authorized():
@@ -249,8 +268,7 @@ async def main():
     await client.run_until_disconnected()
 
 # Запуск
-with client:
-    client.loop.run_until_complete(main())
+asyncio.run(main())
 
 
 
